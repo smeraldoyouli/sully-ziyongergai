@@ -2891,6 +2891,17 @@ const Chat: React.FC = () => {
                     </div>
                 )}
                 
+                {selectionMode && selectedMsgIds.size > 0 && (
+    <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white border-t border-gray-200">
+        <button
+            onClick={handleExportScreenshot}
+            className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-bold active:scale-95 flex items-center gap-2"
+        >
+            <span>📷</span> 导出截图 ({selectedMsgIds.size}条)
+        </button>
+    </div>
+)}
+
                 <ChatInputArea
                     input={input} setInput={handleInputChange}
                     isTyping={isTyping} selectionMode={selectionMode}
@@ -3085,5 +3096,78 @@ const Chat: React.FC = () => {
         </div>
     );
 };
+// --- 导出截图功能 ---
+const handleExportScreenshot = async () => {
+    if (selectedMsgIds.size === 0) {
+        addToast('请先选择要截图的消息', 'info');
+        return;
+    }
 
+    try {
+        addToast('正在生成截图...', 'info');
+        
+        const selectedElements: HTMLElement[] = [];
+        for (const id of selectedMsgIds) {
+            const el = document.getElementById(`chat-msg-${id}`);
+            if (el) selectedElements.push(el);
+        }
+
+        if (selectedElements.length === 0) {
+            addToast('未找到选中的消息，请重试', 'error');
+            return;
+        }
+
+        const { default: html2canvas } = await import('html2canvas');
+        
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: ${scrollRef.current?.clientWidth || 400}px;
+            background: white;
+            padding: 16px;
+            z-index: -999;
+        `;
+        document.body.appendChild(container);
+
+        for (const el of selectedElements) {
+            const clone = el.cloneNode(true) as HTMLElement;
+            clone.querySelectorAll('.ring-2, .ring-yellow-300, .bg-yellow-50\\/40').forEach(el => {
+                el.classList.remove('ring-2', 'ring-yellow-300', 'bg-yellow-50/40');
+            });
+            container.appendChild(clone);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const canvas = await html2canvas(container, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+        });
+
+        document.body.removeChild(container);
+
+        const link = document.createElement('a');
+        const now = new Date();
+        const timestamp = 
+            now.getFullYear() +
+            '-' + String(now.getMonth() + 1).padStart(2, '0') +
+            '-' + String(now.getDate()).padStart(2, '0') +
+            '_' + String(now.getHours()).padStart(2, '0') +
+            '-' + String(now.getMinutes()).padStart(2, '0') +
+            '-' + String(now.getSeconds()).padStart(2, '0');
+        link.download = `SULLY_截图_${timestamp}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        addToast(`✅ 截图已保存 (${selectedMsgIds.size} 条消息)`, 'success');
+    } catch (error) {
+        console.error('截图失败:', error);
+        addToast('截图生成失败，请重试或检查控制台错误', 'error');
+    }
+};
 export default Chat;

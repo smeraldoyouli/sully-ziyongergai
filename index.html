@@ -266,6 +266,20 @@
   }
 }
 </script>
+    <style>
+  /* 隐藏 Vercel 注入的工具栏/水印 */
+  [class*="vercel-toolbar"],
+  [class*="vercel-insights"],
+  #vercel-toolbar,
+  .vercel-footer {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+</style>
 </head>
   <body>
     <div id="root"></div>
